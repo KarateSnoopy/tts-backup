@@ -62,10 +62,10 @@ def prefetch_file(
         # Some mods contain malformed URLs missing a prefix. I’m not
         # sure how TTS deals with these. Let’s assume http for now.
         if not urllib.parse.urlparse(url).scheme:
-            print_err(
-                "Warning: URL {url} does not specify a URL scheme. "
-                "Assuming http.".format(url=url)
-            )
+            #print_err(
+            #    "Warning: URL {url} does not specify a URL scheme. "
+            #    "Assuming http.".format(url=url)
+            #)
             fetch_url = "http://" + url
         else:
             fetch_url = url
@@ -144,6 +144,18 @@ def prefetch_file(
             done.add(url)
             continue
 
+        if outfile_name.endswith('.png'):
+            jpg_path = os.path.splitext(outfile_name)[0] + '.jpg'
+            if os.path.isfile(jpg_path) and not refetch:
+                done.add(url)
+                continue
+
+        if outfile_name.endswith('.jpg'):
+            jpg_path = os.path.splitext(outfile_name)[0] + '.png'
+            if os.path.isfile(jpg_path) and not refetch:
+                done.add(url)
+                continue
+
         print("{} ".format(url), end="", flush=True)
 
         if dry_run:
@@ -187,6 +199,11 @@ def prefetch_file(
         print(size_msg, end="", flush=True)
 
         content_type = response.getheader("Content-Type", "").strip()
+        if content_type == "image/jpeg" or content_type == "image/jpg":
+            outfile_name = os.path.splitext(outfile_name)[0] + '.jpg'
+        if content_type == "image/png":
+            outfile_name = os.path.splitext(outfile_name)[0] + '.png'
+
         is_expected = not content_type or content_expected(content_type)
         if not (is_expected or ignore_content_type):
             print_err(
