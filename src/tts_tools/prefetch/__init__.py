@@ -52,6 +52,7 @@ def prefetch_file(
         )
         raise
 
+    missingFiles = False
     done = set()
     for path, url in urls:
 
@@ -175,18 +176,22 @@ def prefetch_file(
                     code=error.code, reason=error.reason
                 )
             )
+            missingFiles = True
             continue
 
         except urllib.error.URLError as error:
             print_err("Error ({reason})".format(reason=error.reason))
+            missingFiles = True
             continue
 
         except socket.timeout as error:
             print_err("Error ({reason})".format(reason=error))
+            missingFiles = True
             continue
 
         except http.client.HTTPException as error:
             print_err("HTTP error ({reason})".format(reason=error))
+            missingFiles = True
             continue
 
         # Only for informative purposes.
@@ -210,6 +215,7 @@ def prefetch_file(
                 "Error: Content type {type} does not match expected type. "
                 "Aborting. Use --relax to ignore.".format(type=content_type)
             )
+            missingFiles = True
             sys.exit(1)
 
         try:
@@ -218,6 +224,7 @@ def prefetch_file(
 
         except FileNotFoundError as error:
             print_err("Error writing object to disk: {}".format(error))
+            missingFiles = True
             raise
 
         # Don’t leave files with partial content lying around.
@@ -234,6 +241,7 @@ def prefetch_file(
                 "Warning: Content type {} did not match "
                 "expected type.".format(content_type)
             )
+            missingFiles = True
             print_err(errmsg)
 
         done.add(url)
@@ -242,15 +250,16 @@ def prefetch_file(
         completion_msg = "Dry-run for {} completed."
     else:
         completion_msg = "Prefetching {} completed."
-    print(completion_msg.format(filename))
-
+    # print(completion_msg.format(filename))
+    return missingFiles
 
 def prefetch_files(args, semaphore=None):
 
+    anymissingFiles = False
     for infile_name in args.infile_names:
 
         try:
-            prefetch_file(
+            missingFiles = prefetch_file(
                 infile_name,
                 dry_run=args.dry_run,
                 refetch=args.refetch,
@@ -260,7 +269,13 @@ def prefetch_files(args, semaphore=None):
                 semaphore=semaphore,
                 user_agent=args.user_agent,
             )
+            if missingFiles:
+                anymissingFiles = True
 
         except (FileNotFoundError, IllegalSavegameException, SystemExit):
             print_err("Aborting.")
             sys.exit(1)
+
+    if anymissingFiles:
+        sys.exit(1)
+    sys.exit(0)
