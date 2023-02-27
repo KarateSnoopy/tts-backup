@@ -176,6 +176,21 @@ def urls_from_save(filename):
     return seekURL(save)
 
 
+def data_from_save(filename):
+    infile = open(filename, "r", encoding="utf-8")
+    try:
+        save = json.load(infile)
+    except UnicodeDecodeError:
+        raise IllegalSavegameException
+
+    if not isinstance(save, dict):
+        raise IllegalSavegameException
+
+    return save
+
+def urls_from_savedata(fileata):
+    return seekURL(fileata)
+
 def get_save_name(filename):
 
     with open(filename, "r", encoding="utf-8") as infile:

@@ -9,16 +9,36 @@ from tts_tools.libtts import is_image
 from tts_tools.libtts import is_obj
 from tts_tools.libtts import is_pdf
 from tts_tools.libtts import urls_from_save
+from tts_tools.libtts import data_from_save
+from tts_tools.libtts import urls_from_savedata
 from tts_tools.util import print_err
 
+import hashlib
 import http.client
 import os
+import json
 import socket
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 
+def hash_file(filename):
+   # make a hash object
+   h = hashlib.sha256()
+
+   # open file for reading in binary mode
+   with open(filename,'rb') as file:
+
+       # loop till the end of the file
+       chunk = 0
+       while chunk != b'':
+           # read only 1024 bytes at a time
+           chunk = file.read(1024)
+           h.update(chunk)
+
+   # return the hex representation of digest
+   return h.hexdigest()
 
 def prefetch_file(
     filename,
@@ -43,7 +63,8 @@ def prefetch_file(
     )
 
     try:
-        urls = urls_from_save(filename)
+        saveFileData = data_from_save(filename)
+        urls = urls_from_savedata(saveFileData)
     except (FileNotFoundError, IllegalSavegameException) as error:
         print_err(
             "Error retrieving URLs from {filename}: {error}".format(
@@ -253,7 +274,84 @@ def prefetch_file(
     # print(completion_msg.format(filename))
     return missingFiles
 
+def readTTSBackupDB(dbFilePath):
+    if os.path.exists(dbFilePath):
+        with open(dbFilePath, 'r') as f:
+            data = json.load(f)
+            return data
+    else:
+        data = {}
+        return data
+
 def prefetch_files(args, semaphore=None):
+
+    if args.singlefile:
+        original_prefetch_files(args, semaphore)
+        return
+
+    ttsbackupFile = "F:\\Tabletop Simulator\\db-ttsbackup.json"
+    ttsbackupJson = readTTSBackupDB(ttsbackupFile)
+
+    with open(ttsbackupFile, 'w') as f:
+        json.dump(ttsbackupJson, f)
+
+    directory = "F:\\Tabletop Simulator\\Mods\\Workshop"
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.json'):
+                filePath = os.path.join(root, file)
+
+                fileKey = file.replace(".json", "")
+                curFileJson = {}
+                if fileKey in ttsbackupJson:
+                    curFileJson = ttsbackupJson[fileKey]
+                
+                oldFileHash = "";                   
+                if "hash" in curFileJson:
+                    oldFileHash = curFileJson["hash"]
+                    
+                curHash = hash_file(filePath)
+                if oldFileHash == curHash:
+                    print("No change. Skipping " + file)
+
+                    if "missingFiles" not in curFileJson:
+                        curFileJson["missingFiles"] = False
+                        ttsbackupJson[fileKey] = curFileJson
+
+                    continue
+
+                try:
+                    missingFiles = prefetch_file(
+                        filePath,
+                        dry_run=args.dry_run,
+                        refetch=args.refetch,
+                        ignore_content_type=args.ignore_content_type,
+                        gamedata_dir=args.gamedata_dir,
+                        timeout=args.timeout,
+                        semaphore=semaphore,
+                        user_agent=args.user_agent,
+                    )
+
+                except (FileNotFoundError, IllegalSavegameException):
+                    missingFiles = False
+                except (SystemExit):
+                    sys.exit(0)
+
+                curFileJson["hash"] = curHash
+                curFileJson["missingFiles"] = missingFiles
+                ttsbackupJson[fileKey] = curFileJson
+
+                if missingFiles:
+                    fileName = os.path.basename(filePath).split('/')[-1]
+                    destfilePath = "F:\\Tabletop Simulator\\Mods\\BrokenWorkshop\\" + fileName
+                    shutil.move(filePath, destfilePath);
+                    print(f"Move {filePath} to {destfilePath}")
+
+                with open(ttsbackupFile, 'w') as f:
+                    json.dump(ttsbackupJson, f)
+
+
+def original_prefetch_files(args, semaphore=None):
 
     anymissingFiles = False
     for infile_name in args.infile_names:

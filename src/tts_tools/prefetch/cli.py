@@ -35,6 +35,14 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--single-file",
+    "-s",
+    dest="singlefile",
+    default=False,
+    help="Download single file.",
+)
+
+parser.add_argument(
     "--refetch",
     "-r",
     dest="refetch",
