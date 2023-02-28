@@ -11,9 +11,11 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument(
-    "infile_names",
+    "--file",
+    "-f",
+    dest="infile_name",
     metavar="FILENAME",
-    nargs="+",
+    default="Ignore",
     help="The save file or mod in JSON format.",
 )
 
@@ -21,7 +23,7 @@ parser.add_argument(
     "--gamedata",
     dest="gamedata_dir",
     metavar="PATH",
-    default=GAMEDATA_DEFAULT,
+    default="F:\\Tabletop Simulator",
     help="The path to the TTS game data directory.",
 )
 

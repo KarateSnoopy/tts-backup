@@ -292,9 +292,6 @@ def prefetch_files(args, semaphore=None):
     ttsbackupFile = "F:\\Tabletop Simulator\\db-ttsbackup.json"
     ttsbackupJson = readTTSBackupDB(ttsbackupFile)
 
-    with open(ttsbackupFile, 'w') as f:
-        json.dump(ttsbackupJson, f)
-
     directory = "F:\\Tabletop Simulator\\Mods\\Workshop"
     for root, dirs, files in os.walk(directory):
         for file in files:
@@ -305,19 +302,29 @@ def prefetch_files(args, semaphore=None):
                 curFileJson = {}
                 if fileKey in ttsbackupJson:
                     curFileJson = ttsbackupJson[fileKey]
-                
+
+                curFileDate = os.path.getmtime(filePath)
+
+                oldFileDate = 0;                   
+                if "fileDate" in curFileJson:
+                    oldFileDate = curFileJson["fileDate"]
+
+                if oldFileDate == curFileDate:
+                    print("No file change. Skipping " + file)
+                    continue
+
                 oldFileHash = "";                   
                 if "hash" in curFileJson:
                     oldFileHash = curFileJson["hash"]
                     
                 curHash = hash_file(filePath)
                 if oldFileHash == curHash:
-                    print("No change. Skipping " + file)
+                    print("No hash change. Skipping " + file)
 
-                    if "missingFiles" not in curFileJson:
-                        curFileJson["missingFiles"] = False
-                        ttsbackupJson[fileKey] = curFileJson
-
+                    curFileJson["fileDate"] = curFileDate
+                    ttsbackupJson[fileKey] = curFileJson
+                    with open(ttsbackupFile, 'w') as f:
+                        json.dump(ttsbackupJson, f)
                     continue
 
                 try:
@@ -339,6 +346,7 @@ def prefetch_files(args, semaphore=None):
 
                 curFileJson["hash"] = curHash
                 curFileJson["missingFiles"] = missingFiles
+                curFileJson["fileDate"] = curFileDate
                 ttsbackupJson[fileKey] = curFileJson
 
                 if missingFiles:
