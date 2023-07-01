@@ -292,7 +292,11 @@ def prefetch_files(args, semaphore=None):
     ttsbackupFile = "F:\\Tabletop Simulator\\db-ttsbackup.json"
     ttsbackupJson = readTTSBackupDB(ttsbackupFile)
 
-    directory = "F:\\Tabletop Simulator\\Mods\\Workshop"
+    if args.savegames:
+        directory = "F:\\Tabletop Simulator\\Saves"
+    else:
+        directory = "F:\\Tabletop Simulator\\Mods\\Workshop"
+
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.endswith('.json'):
@@ -350,10 +354,13 @@ def prefetch_files(args, semaphore=None):
                 ttsbackupJson[fileKey] = curFileJson
 
                 if missingFiles:
-                    fileName = os.path.basename(filePath).split('/')[-1]
-                    destfilePath = "F:\\Tabletop Simulator\\Mods\\BrokenWorkshop\\" + fileName
-                    shutil.move(filePath, destfilePath);
-                    print(f"Move {filePath} to {destfilePath}")
+                    if not args.savegames:
+                        fileName = os.path.basename(filePath).split('/')[-1]
+                        destfilePath = "F:\\Tabletop Simulator\\Mods\\BrokenWorkshop\\" + fileName
+                        shutil.move(filePath, destfilePath);
+                        print(f"Move {filePath} to {destfilePath}")
+                    else:
+                        print(f"Not moving {filePath}")
 
                 with open(ttsbackupFile, 'w') as f:
                     json.dump(ttsbackupJson, f)

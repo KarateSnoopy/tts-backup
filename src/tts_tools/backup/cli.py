@@ -9,6 +9,15 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument(
+    "--save",
+    "-s",
+    dest="savegames",
+    default=False,
+    action="store_true",
+    help="Process save games.",
+)
+
+parser.add_argument(
     "--file",
     "-f",
     dest="infile_name",
@@ -27,7 +36,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--single-file",
-    "-s",
+    "-x",
     dest="singlefile",
     default=False,
     help="Download single file.",
